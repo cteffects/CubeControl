@@ -56,7 +56,7 @@ clean:
 
 post-build:
 	-@echo 'Performing post-build steps'
-	-arm-none-eabi-size "CubeControl.axf"; # arm-none-eabi-objcopy -v -O binary "CubeControl.axf" "CubeControl.bin" ; # checksum -p LPC1114_302 -d "CubeControl.bin";
+	-arm-none-eabi-size "CubeControl.axf" ; arm-none-eabi-objcopy -v -O ihex "CubeControl.axf" "CubeControl.hex" ; #checksum -p LPC1114_302 -d "CubeControl.bin"
 	-@echo ' '
 
 .PHONY: all clean dependents post-build
