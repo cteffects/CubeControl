@@ -53,7 +53,7 @@ void CubeControl::Board::MCUInit()
     masked_write_bits_unsafe(CubeControl::IOCON::PIO2_10(), 0, CubeControl::IOCON::PIO2_10_WRITABLE_BITS_MASK);
     masked_write_bits_unsafe(CubeControl::IOCON::PIO2_11(), 0, CubeControl::IOCON::PIO2_11_WRITABLE_BITS_MASK);
 
-    //set SCK to PIO0_6
+    //set SCK0 to PIO0_6
     CubeControl::IOCON::SCK_LOC() = 2;
 
     //set PIO0_6 to SCK0 function
@@ -75,7 +75,7 @@ void CubeControl::Board::MCUInit()
 
     //set-up SPI channel 1
     masked_write_bits_unsafe(CubeControl::IOCON::PIO2_0(), 2, CubeControl::IOCON::PIO2_0_WRITABLE_BITS_MASK);
-    masked_write_bits_unsafe(CubeControl::IOCON::PIO2_1(), 2, CubeControl::IOCON::PIO2_1_WRITABLE_BITS_MASK);
+    //masked_write_bits_unsafe(CubeControl::IOCON::PIO2_11(), 2, CubeControl::IOCON::PIO2_11_WRITABLE_BITS_MASK);
     masked_write_bits_unsafe(CubeControl::IOCON::PIO2_2(), 2, CubeControl::IOCON::PIO2_2_WRITABLE_BITS_MASK);
     masked_write_bits_unsafe(CubeControl::IOCON::PIO2_3(), 2, CubeControl::IOCON::PIO2_3_WRITABLE_BITS_MASK);
 
@@ -87,11 +87,18 @@ void CubeControl::Board::MCUInit()
     masked_write_bits_unsafe(CubeControl::IOCON::PIO1_6(), 1, CubeControl::IOCON::PIO1_6_WRITABLE_BITS_MASK);
     masked_write_bits_unsafe(CubeControl::IOCON::PIO1_7(), 1, CubeControl::IOCON::PIO1_7_WRITABLE_BITS_MASK);
 
+    CubeControl::GPIO::DIR(2) = CubeControl::Board::layerWriteMask;
+
     //set UART clock divider
     CubeControl::SYSCON::UARTCLKDIV() = 1;
 
-    //enable UART clock
-    CubeControl::SYSCON::CLOCKCFG::enableClock(CubeControl::SYSCON::CLOCKCFG::DEVICE_CLOCK_MASK::UART);
+    //enable peripheral clocks
+    CubeControl::SYSCON::CLOCKCFG::enableClock(
+            CubeControl::SYSCON::CLOCKCFG::DEVICE_CLOCK_MASK::UART |
+            CubeControl::SYSCON::CLOCKCFG::DEVICE_CLOCK_MASK::CT32B0 |
+            CubeControl::SYSCON::CLOCKCFG::DEVICE_CLOCK_MASK::CT32B1 |
+            CubeControl::SYSCON::CLOCKCFG::DEVICE_CLOCK_MASK::SSP0
+            );
 
     //set UART Word Length to 8-bits
     CubeControl::UART::U0LCR() = 3;
@@ -99,14 +106,17 @@ void CubeControl::Board::MCUInit()
     //enable UART FIFO
     CubeControl::UART::U0FCR() = 1;
 
+    //de-assert SPI reset
+    CubeControl::SYSCON::PRESETCTRL() = 0b101;
+
     //set SPI0 clock divider and prescale
     CubeControl::SYSCON::SSP0CLKDIV() = 1;
     CubeControl::SPI::CPSR(0) = 2;
+    CubeControl::SPI::CR1(0) = 1 << 1; //spi-enable
 
     //set SPI frame to 12-bits required by TLC5940
     CubeControl::SPI::CR0(0) = 0xB;
 
-    //set SPI1 clock divider and prescale
-    CubeControl::SYSCON::SSP1CLKDIV() = 1;
-    CubeControl::SPI::CPSR(1) = 8;
+    //we need determinism, so IRQLATENCY = 20 clocks
+    CubeControl::SYSCON::IRQLATENCY() = 20;
 }

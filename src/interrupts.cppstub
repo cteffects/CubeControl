@@ -1,0 +1,75 @@
+#include "bytevoxel.h"
+#include "board.h"
+
+extern void flushUARTIntoBuffer();
+extern bool inErrorState;
+extern unsigned int layer;
+extern int backBufferID;
+extern CubeControl::ByteVoxelBuffer<8,8,8> buffers[2];
+
+__attribute__ ((section(".after_vectors")))
+void UART_IRQHandler(void)
+{
+    unsigned int intid = CubeControl::UART::U0IIR() &  0b1111;
+    if(intid == 0b0110) // RX Line Status / Error
+    {
+        if(CubeControl::UART::U0LSR() & 0b11110)
+        {
+            inErrorState = true;
+        }
+    }
+    else if(intid == 0b0100) // RX Data Available
+    {
+        flushUARTIntoBuffer();
+    }
+    else if(intid == 0b1100) // Character Time-out Indication
+    {
+        flushUARTIntoBuffer();
+    }
+    else if(intid == 0b0010) // THRE - THR Empty
+    {
+        // do nothing
+        // IIR read clears interrups
+    }
+    else if(intid == 0b0000) // Modem Status
+    {
+        inErrorState = CubeControl::UART::U0MSR() > 0;
+    }
+}
+
+extern unsigned int layerGPIOmask[];
+
+__attribute__ ((section(".after_vectors")))
+void TIMER32_1_IRQHandler(void)
+{
+    CubeControl::Timer::GPTimer::TCR(CubeControl::Timer::GPTimer::GPTimerID::CT32B0) = 2;//stop and reset timer 0
+    CubeControl::Timer::GPTimer::TCR(CubeControl::Timer::GPTimer::GPTimerID::CT32B1) = 2;//stop and reset timer 1
+    CubeControl::Timer::GPTimer::IR(CubeControl::Timer::GPTimer::GPTimerID::CT32B1) = 0b11111; //reset interrupts for timer 1
+    //do anything (preferably jitter-free) here
+
+    CubeControl::GPIO::CONSTEXPR_MASKED_DATA(2, 1 << 1) = 1 << 1; //blank
+
+    CubeControl::GPIO::CONSTEXPR_MASKED_DATA(2, 1) = 1; //latch new data
+    CubeControl::GPIO::CONSTEXPR_MASKED_DATA(2, 1) = 0;
+
+    layer = (layer + 1) & 0b111; //increment layer num
+    CubeControl::GPIO::CONSTEXPR_MASKED_DATA(2, CubeControl::Board::layerWriteMask) = layerGPIOmask[layer]; // change to next layer ID
+
+    CubeControl::GPIO::CONSTEXPR_MASKED_DATA(2, 1 << 1) = 0; //unblank
+
+    CubeControl::Timer::GPTimer::TCR(CubeControl::Timer::GPTimer::GPTimerID::CT32B1) = 1;//start timer 1
+    CubeControl::Timer::GPTimer::TCR(CubeControl::Timer::GPTimer::GPTimerID::CT32B0) = 1;//start timer 0
+    //don't do any more stuff after here unless you can beat the next interrupt
+
+    //write out new layer info to TLC5940 while clocking greyscale pin on old data
+    unsigned char *voxel = &buffers[1-backBufferID].voxels[layer * CubeControl::ByteVoxelBuffer<8,8,8>::layerVoxelCount];
+    unsigned char *endVoxel = &buffers[1-backBufferID].voxels[(layer + 1) * CubeControl::ByteVoxelBuffer<8,8,8>::layerVoxelCount];
+    while(voxel != endVoxel)
+    {
+        while((CubeControl::SPI::SR(0) & 0b10) == 0){} // wait if FIFO transmit full
+        CubeControl::SPI::DR(0) = *voxel;
+        ++voxel;
+    }
+
+    //dead time after here (process UART interrupts and stuff)
+}

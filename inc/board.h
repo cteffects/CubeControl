@@ -30,6 +30,8 @@ inline static void smallDelay()
     volatile int i = 32; while(--i){};
 };
 
+constexpr unsigned int layerWriteMask = 0b111111110000;
+
 }
 
 }

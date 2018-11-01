@@ -14,7 +14,8 @@ namespace CubeControl
 template <unsigned int x, unsigned int y, unsigned int z>
 struct ByteVoxelBuffer
 {
-    static constexpr unsigned int voxelCount = x*y*z;
+    static constexpr unsigned int layerVoxelCount = x*y;
+    static constexpr unsigned int voxelCount = layerVoxelCount*z;
 
     ///write next byte into voxel array, returns true if reached end
     bool inline writeNextByte(unsigned char nextByte)

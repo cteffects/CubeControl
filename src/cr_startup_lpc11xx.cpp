@@ -29,6 +29,8 @@
 // this code.
 //*****************************************************************************
 
+//#include "board.h"
+
 #if defined (__cplusplus)
 #ifdef __REDLIB__
 #error Redlib does not support C++
@@ -87,9 +89,11 @@ void I2C_IRQHandler (void) ALIAS(IntDefaultHandler);
 void TIMER16_0_IRQHandler (void) ALIAS(IntDefaultHandler);
 void TIMER16_1_IRQHandler (void) ALIAS(IntDefaultHandler);
 void TIMER32_0_IRQHandler (void) ALIAS(IntDefaultHandler);
-void TIMER32_1_IRQHandler (void) ALIAS(IntDefaultHandler);
+extern void TIMER32_1_IRQHandler (void);
+//void TIMER32_1_IRQHandler (void) ALIAS(IntDefaultHandler);
 void SSP0_IRQHandler (void) ALIAS(IntDefaultHandler);
-void UART_IRQHandler (void) ALIAS(IntDefaultHandler);
+extern void UART_IRQHandler (void);
+//void UART_IRQHandler (void) ALIAS(IntDefaultHandler);
 void ADC_IRQHandler (void) ALIAS(IntDefaultHandler);
 void WDT_IRQHandler (void) ALIAS(IntDefaultHandler);
 void BOD_IRQHandler (void) ALIAS(IntDefaultHandler);
@@ -334,6 +338,7 @@ void SysTick_Handler(void)
 // handler is not present in the application code.
 //
 //*****************************************************************************
+
 __attribute__ ((section(".after_vectors")))
 void IntDefaultHandler(void)
 {
@@ -341,4 +346,6 @@ void IntDefaultHandler(void)
     {
     }
 }
+
+#include "interrupts.cppstub"
 
